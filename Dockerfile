@@ -1,13 +1,27 @@
-FROM php:8.2-apache
+FROM php:8.2-cli
 
-# تعطيل كل وحدات MPM ثم تفعيل mpm_prefork فقط لمنع التعارض
-RUN a2dismod mpm_event mpm_worker || true \
-    && a2enmod mpm_prefork rewrite
+# تثبيت خادم Nginx
+RUN apt-get update && apt-get install -y nginx && rm -rf /lib/apt/lists/*
 
-# تحميل ملف TinyFileManager وتسميته index.php
-ADD https://raw.githubusercontent.com/prasathmani/tinyfilemanager/master/tinyfilemanager.php /var/www/html/index.php
+# إنشاء مجلد التطبيق وتحميل TinyFileManager
+RUN mkdir -p /app/data
+ADD https://raw.githubusercontent.com/prasathmani/tinyfilemanager/master/tinyfilemanager.php /app/index.php
 
-# ضبط الصلاحيات
-RUN chown -R www-data:www-data /var/www/html && chmod -R 755 /var/www/html
+# ضبط إعدادات Nginx لتشغيل السيرفر مباشرة
+RUN echo 'server { \
+    listen 80; \
+    root /app; \
+    index index.php; \
+    client_max_body_size 1024M; \
+    location / { \
+        try_files $uri $uri/ /index.php?$args; \
+    } \
+    location ~ \.php$ { \
+        include fastcgi_params; \
+        fastcgi_pass 127.0.0.1:9000; \
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; \
+    } \
+}' > /etc/nginx/sites-available/default
 
-EXPOSE 80
+# تشغيل PHP-FPM و Nginx سوية
+CMD php-fpm -D && nginx -g 'daemon off;'
