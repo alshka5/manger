@@ -1,13 +1,13 @@
-FROM php:8.2-cli
+FROM php:8.2-fpm
 
 # تثبيت خادم Nginx
-RUN apt-get update && apt-get install -y nginx && rm -rf /lib/apt/lists/*
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
 
 # إنشاء مجلد التطبيق وتحميل TinyFileManager
 RUN mkdir -p /app/data
 ADD https://raw.githubusercontent.com/prasathmani/tinyfilemanager/master/tinyfilemanager.php /app/index.php
 
-# ضبط إعدادات Nginx لتشغيل السيرفر مباشرة
+# ضبط إعدادات Nginx لتشغيل PHP
 RUN echo 'server { \
     listen 80; \
     root /app; \
@@ -23,5 +23,7 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/sites-available/default
 
-# تشغيل PHP-FPM و Nginx سوية
+EXPOSE 80
+
+# تشغيل php-fpm و nginx معاً
 CMD php-fpm -D && nginx -g 'daemon off;'
